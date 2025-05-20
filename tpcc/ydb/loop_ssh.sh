@@ -86,8 +86,7 @@ function loop-ssh {
                 local ssh_user=$1
                 ;;
                 -i)
-                # ignore -i
-                shift
+                ignore_error=1
                 ;;
                 *)
                 echo "Unknown parameter $1"
@@ -98,7 +97,12 @@ function loop-ssh {
         shift
         done
 
-        local cmd=$1
+        if [ $# -eq 0 ]; then
+		echo "Command unspecified"
+		exit 1
+	fi
+
+	local cmd=$1
 
         if [ -z "$hosts" ]; then
                 echo "Hosts file name not specified"
@@ -116,7 +120,7 @@ function loop-ssh {
 
         for host in $(sort -u "$hosts" | grep -v '^$' ); do
                 ssh -o StrictHostKeyChecking=no $ssh_user@$host "$cmd"
-                if [[ $? -ne 0 ]]; then
+                if [[ $? -ne 0 && $ignore_error -ne 1 ]]; then
                         echo "Failed to run command $cmd on $host"
                         exit 1
                 fi
