@@ -49,7 +49,7 @@ fi
 dst_home=$HOME
 if [[ -n "$ssh_user" ]]; then
     host0=`sort -u "$hosts" | head -n 1`
-    dst_home="`ssh $ssh_user@$host0 'echo $HOME'`"
+    dst_home="`ssh -o StrictHostKeyChecking=no $ssh_user@$host0 'echo $HOME'`"
 fi
 
 if [[ -n "$package" ]]; then

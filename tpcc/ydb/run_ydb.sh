@@ -3,6 +3,8 @@
 export TZ=UTC
 export LC_ALL=en_US.UTF-8
 
+source ./loop_ssh.sh
+
 execute_time_seconds=300
 warmup_time_seconds=60
 
@@ -60,8 +62,8 @@ kill_tpcc() {
         return
     fi
 
-    parallel-ssh -h $unique_hosts -i 'pkill -9 -f "^/bin/bash.*tpcc.sh"; pkill -9 -f "^java.*benchbase.jar -b tpcc"' &>/dev/null
-    parallel-ssh -h $unique_hosts -i "cd $tpcc_path && rm -rf results_*" &>/dev/null
+    loop-ssh -h $hosts_file -i 'pkill -9 -f "^/bin/bash.*tpcc.sh"; pkill -9 -f "^java.*benchbase.jar -b tpcc"' &>/dev/null
+    loop-ssh -h $hosts_file -i "cd $tpcc_path && rm -rf results_*" &>/dev/null
 }
 
 cleanup() {
@@ -93,11 +95,6 @@ run_compaction() {
 }
 
 trap cleanup SIGINT SIGTERM
-
-if ! which parallel-ssh >/dev/null; then
-    echo "parallel-ssh not found, you should install pssh"
-    exit 1
-fi
 
 if ! command -v ydb >/dev/null; then
     echo "ydb CLI not found, you might want to download it from ydb.tech and put to any dir in $PATH"
@@ -273,9 +270,6 @@ if [ ! -r "$hosts_file" ]; then
     exit 1
 fi
 
-unique_hosts=`mktemp`
-sort -u $hosts_file > $unique_hosts
-
 # we need this hack to not force
 # user accept manually cluster hosts
 for host in `cat "$hosts_file" | sort -u`; do
@@ -307,7 +301,7 @@ if [[ -z "$viewer_url" ]]; then
 fi
 
 tpcc_script="$tpcc_path/scripts/tpcc.sh"
-parallel-ssh -h $hosts_file -i 'test -e $tpcc_script || (echo tpcc.sh does not exist && exit 1)'
+loop-ssh -h $hosts_file -i 'test -e $tpcc_script || (echo tpcc.sh does not exist && exit 1)'
 if [ $? -ne 0 ]; then
     echo "$tpcc_script not found on some/all hosts, install benchbase (check our build and README)"
     exit 1
@@ -323,7 +317,7 @@ if [[ -n "$ca_file_path" ]]; then
     log "Using CA file: $ca_file_path, enforcing secure connection"
     use_grpcs=1
 
-    parallel-scp -h $unique_hosts $ca_file_path $tpcc_path/ &>/dev/null
+    loop-scp -h $hosts_file $ca_file_path $tpcc_path/ &>/dev/null
     if [[ $? -ne 0 ]]; then
         log "Failed to copy $ca_file_path file to the tpcc hosts"
         exit 1
@@ -343,7 +337,7 @@ if [[ -z "$YDB_ANONYMOUS_CREDENTIALS" ]]; then
         export YDB_TOKEN="$YDB_ACCESS_TOKEN_CREDENTIALS"
         export YDB_TOKEN_FILE="$token_file_path"
 
-        parallel-scp -h $unique_hosts $token_file_path $tpcc_path/ &>/dev/null
+        loop-scp -h $hosts_file $token_file_path $tpcc_path/ &>/dev/null
         if [[ $? -ne 0 ]]; then
             log "Failed to copy $token_file_path file to the tpcc hosts"
             exit 1
@@ -360,7 +354,7 @@ if [[ -z "$YDB_ANONYMOUS_CREDENTIALS" ]]; then
         export SA_KEY_FILE="$sa_key_file_path"
         export YDB_SERVICE_ACCOUNT_KEY_FILE_CREDENTIALS="$SA_KEY_FILE"
 
-        parallel-scp -h $unique_hosts $sa_key_file_path $tpcc_path/ &>/dev/null
+        loop-scp -h $hosts_file $sa_key_file_path $tpcc_path/ &>/dev/null
         if [[ $? -ne 0 ]]; then
             log "Failed to copy $sa_key_file_path file to the tpcc hosts"
             exit 1

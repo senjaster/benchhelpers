@@ -6,6 +6,8 @@ function loop-scp {
 
         usage="Usage: loop-scp --hosts <hosts_file> --user <user_name> <file_to_upload> <remote_path>"
 
+        ssh_user=$USER
+
         while [ $# -gt 2 ]; do
         case "$1" in
                 -h|--hosts)
@@ -59,13 +61,19 @@ function loop-scp {
         fi
 
         IFS=$'\n'        
-        for host in $(sort -u "$hosts"); do
+        for host in $(sort -u "$hosts" | grep -v '^$'); do
                 scp -o StrictHostKeyChecking=no "$file" $ssh_user@$host:$remote_path
+                if [[ $? -ne 0 ]]; then
+                        echo "Failed to copy $file file to $host"
+                        exit 1
+                fi
         done
 }
 
 function loop-ssh {
         usage="Usage: loop-ssh --user <user_name> --hosts <hosts_file> <command to execute on remote hosts>"
+
+        ssh_user=$USER
 
         while [ $# -gt 1 ]; do
         case "$1" in
@@ -104,20 +112,13 @@ function loop-ssh {
                 exit 1
         fi
 
-        if [ -z "$ssh_user" ]; then
-                echo "User name not specified"
-                echo $usage
-                exit 1
-        fi
-
         IFS=$'\n'
 
-        for host in $(sort -u "$hosts"); do
-           ssh -o StrictHostKeyChecking=no $ssh_user@$host "$cmd"
+        for host in $(sort -u "$hosts" | grep -v '^$' ); do
+                ssh -o StrictHostKeyChecking=no $ssh_user@$host "$cmd"
+                if [[ $? -ne 0 ]]; then
+                        echo "Failed to run command $cmd on $host"
+                        exit 1
+                fi
         done
 }
-
-echo "!!!!!!!"
-loop-scp -u arsbir -h tpcc.hosts -x README.md ""
-loop-ssh -u arsbir -h tpcc.hosts "ls -l"
-loop-ssh --user arsbir --hosts tpcc.hosts "rm README.md" 
