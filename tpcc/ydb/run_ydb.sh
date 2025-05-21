@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -x
-
 export TZ=UTC
 export LC_ALL=en_US.UTF-8
 
@@ -420,14 +418,12 @@ fi
 
 log "Generating TPC-C configs and uploading to the hosts"
 
-
-
 # For each host in $hosts we generate config file with the following name: config.<host_num>.xml,
 # Note that host_num is line number in $hosts_file
 $tpcc_helper \
     -w $warehouses \
     generate-configs \
-    `echo $gen_config_args | xargs`  \
+    $gen_config_args \
     --hosts $hosts_file \
     --input $config_template \
     --execute-time $execute_time_seconds \

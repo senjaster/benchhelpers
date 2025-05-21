@@ -60,14 +60,13 @@ function loop-scp {
            exit 1
         fi
 
-        IFS=$'\n'        
-        for host in $(sort -u "$hosts" | grep -v '^$'); do
+        while read host; do
                 scp -o StrictHostKeyChecking=no "$file" $ssh_user@$host:$remote_path
                 if [[ $? -ne 0 ]]; then
                         echo "Failed to copy $file file to $host"
                         exit 1
                 fi
-        done
+        done <<< $(sort -u "$hosts" | grep -v '^$')
 }
 
 function loop-ssh {
@@ -116,13 +115,11 @@ function loop-ssh {
                 exit 1
         fi
 
-        IFS=$'\n'
-
-        for host in $(sort -u "$hosts" | grep -v '^$' ); do
+        while read host; do
                 ssh -o StrictHostKeyChecking=no $ssh_user@$host "$cmd"
                 if [[ $? -ne 0 && $ignore_error -ne 1 ]]; then
                         echo "Failed to run command $cmd on $host"
                         exit 1
                 fi
-        done
+        done <<< $(sort -u "$hosts" | grep -v '^$')
 }
